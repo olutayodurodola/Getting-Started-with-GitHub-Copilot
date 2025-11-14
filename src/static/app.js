@@ -92,6 +92,19 @@ document.addEventListener("DOMContentLoaded", () => {
     const activity = formData.get("activity");
     const email = formData.get("email");
 
+    // Validate activity and email
+    if (!activity || activity === "null") {
+      messageDiv.textContent = "Please select a valid activity.";
+      messageDiv.style.color = "red";
+      return;
+    }
+
+    if (!email) {
+      messageDiv.textContent = "Please enter a valid email address.";
+      messageDiv.style.color = "red";
+      return;
+    }
+
     try {
       const response = await fetch(`/activities/${activity}/signup`, {
         method: "POST",
