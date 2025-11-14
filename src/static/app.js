@@ -22,7 +22,14 @@ document.addEventListener("DOMContentLoaded", () => {
 
         // Create participants list
         const participantsList = details.participants
-          .map((participant) => `<li>${participant}</li>`)
+          .map(
+            (participant) => `
+              <li>
+                <span>${participant}</span>
+                <button class="delete-participant" data-activity="${name}" data-participant="${participant}">❌</button>
+              </li>
+            `
+          )
           .join("");
 
         activityCard.innerHTML = `
@@ -44,6 +51,33 @@ document.addEventListener("DOMContentLoaded", () => {
         option.textContent = name;
         activitySelect.appendChild(option);
       });
+
+      // Add event listeners for delete buttons
+      document.querySelectorAll(".delete-participant").forEach((button) => {
+        button.addEventListener("click", async (event) => {
+          const activity = event.target.dataset.activity;
+          const participant = event.target.dataset.participant;
+
+          try {
+            const response = await fetch(`/activities/${activity}/unregister`, {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+              },
+              body: JSON.stringify({ email: participant }),
+            });
+
+            if (response.ok) {
+              fetchActivities(); // Refresh the activities list
+            } else {
+              const error = await response.json();
+              console.error("Error unregistering participant:", error);
+            }
+          } catch (error) {
+            console.error("Error unregistering participant:", error);
+          }
+        });
+      });
     } catch (error) {
       activitiesList.innerHTML = "<p>Failed to load activities. Please try again later.</p>";
       console.error("Error fetching activities:", error);
@@ -54,39 +88,32 @@ document.addEventListener("DOMContentLoaded", () => {
   signupForm.addEventListener("submit", async (event) => {
     event.preventDefault();
 
-    const email = document.getElementById("email").value;
-    const activity = document.getElementById("activity").value;
+    const formData = new FormData(signupForm);
+    const activity = formData.get("activity");
+    const email = formData.get("email");
 
     try {
-      const response = await fetch(
-        `/activities/${encodeURIComponent(activity)}/signup?email=${encodeURIComponent(email)}`,
-        {
-          method: "POST",
-        }
-      );
-
-      const result = await response.json();
+      const response = await fetch(`/activities/${activity}/signup`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ email }),
+      });
 
       if (response.ok) {
-        messageDiv.textContent = result.message;
-        messageDiv.className = "success";
-        signupForm.reset();
+        messageDiv.textContent = `Successfully signed up for ${activity}!`;
+        messageDiv.style.color = "green";
+        fetchActivities(); // Refresh the activities list dynamically
       } else {
-        messageDiv.textContent = result.detail || "An error occurred";
-        messageDiv.className = "error";
+        const error = await response.json();
+        messageDiv.textContent = error.detail || "Failed to sign up.";
+        messageDiv.style.color = "red";
       }
-
-      messageDiv.classList.remove("hidden");
-
-      // Hide message after 5 seconds
-      setTimeout(() => {
-        messageDiv.classList.add("hidden");
-      }, 5000);
     } catch (error) {
-      messageDiv.textContent = "Failed to sign up. Please try again.";
-      messageDiv.className = "error";
-      messageDiv.classList.remove("hidden");
       console.error("Error signing up:", error);
+      messageDiv.textContent = "An error occurred. Please try again later.";
+      messageDiv.style.color = "red";
     }
   });
 
